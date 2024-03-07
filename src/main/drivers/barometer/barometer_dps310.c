@@ -292,8 +292,15 @@ static bool dps310GetUP(baroDev_t *baro)
     const float c21 = baroState.calib.c21;
     const float c30 = baroState.calib.c30;
 
-    // See section 4.9.1, How to Calculate Compensated Pressure Values, of datasheet
-    baroState.pressure = c00 + Praw_sc * (c10 + Praw_sc * (c20 + Praw_sc * c30)) + Traw_sc * c01 + Traw_sc * Praw_sc * (c11 + Praw_sc * c21);
+    if (chipId[0] == SPL07_003_CHIP_ID) {
+        const float c31 = baroState.calib.c31;
+        const float c40 = baroState.calib.c40;
+        // SPA06-003.datasheet session 4.6.1
+        baroState.pressure = c00 + Praw_sc * (c10 + Praw_sc * (c20 + Praw_sc * (c30 + c40 * Praw_sc))) + Traw_sc * (c01 + Praw_sc * (c11 + Praw_sc * (c21 + c31 * Praw_sc)));
+    } else {
+        // See section 4.9.1, How to Calculate Compensated Pressure Values, of datasheet
+        baroState.pressure = c00 + Praw_sc * (c10 + Praw_sc * (c20 + Praw_sc * c30)) + Traw_sc * c01 + Traw_sc * Praw_sc * (c11 + Praw_sc * c21);
+    }
 
     const float c0 = baroState.calib.c0;
     const float c1 = baroState.calib.c1;
