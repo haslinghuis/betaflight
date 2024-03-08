@@ -35,6 +35,7 @@
 #include "build/build_config.h"
 #include "build/debug.h"
 #include "common/utils.h"
+#include "common/maths.h"
 
 #include "drivers/io.h"
 #include "drivers/bus.h"
@@ -170,27 +171,19 @@ static bool deviceConfigure(const extDevice_t *dev)
         return false;
     }
 
-    // 1. Read the pressure calibration coefficients (c00, c10, c20, c30, c01, c11, and c21) from the Calibration Coefficient register.
+    // 1. Read the pressure calibration coefficients (c00, c10, c20, c30, c01, c11, and c21, c31, c40) from the Calibration Coefficient register.
     //   Note: The coefficients read from the coefficient register are 2's complement numbers.
     // Do the read of the coefficients in multiple parts, as the chip will return a read failure when trying to read all at once over I2C.
-    uint8_t COEFFICIENT_LENGTH, READ_LENGTH;
+    unsigned coefficientLength = chipId[0] == SPL07_003_CHIP_ID ? 22 : 18;
+    uint8_t coef[coefficientLength];
 
-    if (chipId[0] == SPL07_003_CHIP_ID) {
-        COEFFICIENT_LENGTH = 22;
-    } else {
-        COEFFICIENT_LENGTH = 18;
+    for (unsigned i = 0; i < sizeof(coef); ) {
+        int chunk = MIN((unsigned)9, (sizeof(coef) - i));
+        if (!busReadBuf(dev, DPS310_REG_COEF + i,  coef + i, chunk)) {
+            return false;
+        }
+        i += chunk;
     }
-
-    READ_LENGTH = COEFFICIENT_LENGTH / 2;
-
-    uint8_t coef[COEFFICIENT_LENGTH];
-    if (!busReadBuf(dev, DPS310_REG_COEF, coef, READ_LENGTH)) {
-        return false;
-    }
-    if (!busReadBuf(dev, DPS310_REG_COEF + READ_LENGTH, coef + READ_LENGTH, COEFFICIENT_LENGTH - READ_LENGTH)) {
-        return false;
-    }
-
     // See section 8.11, Calibration Coefficients (COEF), of datasheet
 
     // 0x11 c0 [3:0] + 0x10 c0 [11:4]
@@ -238,8 +231,8 @@ static bool deviceConfigure(const extDevice_t *dev)
     if (chipId[0] == SPL07_003_CHIP_ID) {
         registerSetBits(dev, DPS310_REG_TMP_CFG, DPS310_TMP_CFG_BIT_TMP_RATE_32HZ | DPS310_TMP_CFG_BIT_TMP_PRC_16);
     } else {
-        const uint8_t TMP_COEF_SRCE = registerRead(dev, DPS310_REG_COEF_SRCE) & DPS310_COEF_SRCE_BIT_TMP_COEF_SRCE;
-        registerSetBits(dev, DPS310_REG_TMP_CFG, DPS310_TMP_CFG_BIT_TMP_RATE_32HZ | DPS310_TMP_CFG_BIT_TMP_PRC_16 | TMP_COEF_SRCE);
+        const uint8_t tempCoefSource = registerRead(dev, DPS310_REG_COEF_SRCE) & DPS310_COEF_SRCE_BIT_TMP_COEF_SRCE;
+        registerSetBits(dev, DPS310_REG_TMP_CFG, DPS310_TMP_CFG_BIT_TMP_RATE_32HZ | DPS310_TMP_CFG_BIT_TMP_PRC_16 | tempCoefSource);
     }
 
     // CFG_REG: set pressure and temperature result bit-shift (required when the oversampling rate is >8 times)
@@ -291,6 +284,8 @@ static bool dps310GetUP(baroDev_t *baro)
     const float c20 = baroState.calib.c20;
     const float c21 = baroState.calib.c21;
     const float c30 = baroState.calib.c30;
+    const float c31 = baroState.calib.c31;
+    const float c40 = baroState.calib.c40;
 
     if (chipId[0] == SPL07_003_CHIP_ID) {
         const float c31 = baroState.calib.c31;
