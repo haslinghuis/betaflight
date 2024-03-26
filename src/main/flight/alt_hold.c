@@ -172,6 +172,7 @@ void altHoldProcessTransitions(altHoldState_s* altHoldState) {
 
 void altHoldUpdate(altHoldState_s* altHoldState)
 {
+    changeCurrentAltitude(altHoldState)
     altHoldProcessTransitions(altHoldState);
 
     float timeInterval = 1.0f / ALTHOLD_TASK_PERIOD;
@@ -216,6 +217,20 @@ void altHoldUpdate(altHoldState_s* altHoldState)
         altHoldState->throttle = newThrottle;
     }
 }
+
+void changeCurrentAltitude(altHoldState_s* altHoldState)
+{
+    //Change altitude base on the throttle value?
+    int throttle=constrain(rcData[3], 1050, 1900);
+    if(throttle>1500){altHoldState->targetAltitude+=0.1f;}
+    else if(throttle<1500){altHoldState->targetAltitude-=0.1f;}
+    DEBUG_SET(DEBUG_ALTHOLD, 4, (int16_t)(throttle));
+    return althaltHoldState->targetAltitude
+}
+
+
+
+
 
 altHoldState_s altHoldState;
 
