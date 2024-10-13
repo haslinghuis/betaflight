@@ -55,8 +55,16 @@
 
 #include "rx/rx.h"
 
+#ifdef USE_DYAD
 #include "dyad.h"
+<<<<<<< HEAD:src/platform/SITL/sitl.c
 #include "udplink.h"
+=======
+#else
+#include "drivers/serial_ws.h"
+#endif
+#include "target/SITL/udplink.h"
+>>>>>>> d1c1eaeaa (Add websocket support):src/main/target/SITL/sitl.c
 
 uint32_t SystemCoreClock;
 
@@ -264,19 +272,32 @@ static void *udpRCThread(void *data)
     return NULL;
 }
 
+static void updateSerialWs(void)
+{
+    wsUpdate();
+}
+
 static void* tcpThread(void* data)
 {
     UNUSED(data);
 
+#ifdef USE_DYAD
     dyad_init();
     dyad_setTickInterval(0.2f);
     dyad_setUpdateTimeout(0.01f);
+#endif // USE_DYAD
 
     while (workerRunning) {
+#ifdef USE_DYAD
         dyad_update();
+#else
+        updateSerialWs();
+#endif
     }
 
+#ifdef USE_DYAD
     dyad_shutdown();
+#endif
     printf("tcpThread end!!\n");
     return NULL;
 }

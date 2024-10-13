@@ -22,6 +22,7 @@
 
 #include <netinet/in.h>
 #include <pthread.h>
+#ifdef USE_DYAD
 #include "dyad.h"
 
 #define RX_BUFFER_SIZE    1400
@@ -50,3 +51,4 @@ void tcpDataOut(tcpPort_t *instance);
 bool tcpIsStart(void);
 bool* tcpGetUsed(void);
 tcpPort_t* tcpGetPool(void);
+#endif // USE_DYAD

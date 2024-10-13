@@ -40,7 +40,11 @@
 #endif
 
 #if defined(SIMULATOR_BUILD)
+#ifdef USE_DYAD
 #include "drivers/serial_tcp.h"
+#else
+#include "drivers/serial_ws.h"
+#endif
 #endif
 
 #include "drivers/light_led.h"
@@ -487,12 +491,16 @@ serialPort_t *openSerialPort(
 #endif
 #if defined(SIMULATOR_BUILD)
             // emulate serial ports over TCP
+#ifdef USE_DYAD
             serialPort = serTcpOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
 #else
+            serialPort = serialWsOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
+#endif // USE_DYAD
+#else
             serialPort = uartOpen(SERIAL_PORT_IDENTIFIER_TO_UARTDEV(identifier), rxCallback, rxCallbackData, baudRate, mode, options);
-#endif
+#endif // SIMULATOR_BUILD
             break;
-#endif
+#endif // USE_UART
 
 #ifdef USE_SOFTSERIAL
         case SERIAL_PORT_SOFTSERIAL1:

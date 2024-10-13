@@ -23,6 +23,9 @@
  * Dominic Clifton - Serial port abstraction, Separation of common STM32 code for cleanflight, various cleanups.
  * Hamasaki/Timecop - Initial baseflight code
 */
+
+#ifdef USE_DYAD
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -276,3 +279,5 @@ static const struct serialPortVTable tcpVTable = {
         .beginWrite = NULL,
         .endWrite = NULL,
 };
+
+#endif // USE_DYAD
