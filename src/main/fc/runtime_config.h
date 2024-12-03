@@ -71,13 +71,11 @@ typedef enum {
 
 #define ARMING_DISABLE_FLAGS_COUNT (LOG2(ARMING_DISABLED_ARM_SWITCH) + 1)
 
-extern const char *armingDisableFlagNames[ARMING_DISABLE_FLAGS_COUNT];
-STATIC_ASSERT(ARRAYLEN(armingDisableFlagNames) == ARMING_DISABLE_FLAGS_COUNT, "armingDisableFlagNames size mismatch");
-
 void setArmingDisabled(armingDisableFlags_e flag);
 void unsetArmingDisabled(armingDisableFlags_e flag);
 bool isArmingDisabled(void);
 armingDisableFlags_e getArmingDisableFlags(void);
+const char *getArmingDisableFlagName(armingDisableFlags_e flag);
 
 typedef enum {
     ANGLE_MODE      = (1 << 0),
@@ -133,5 +131,5 @@ bool sensors(uint32_t mask);
 void sensorsSet(uint32_t mask);
 void sensorsClear(uint32_t mask);
 uint32_t sensorsMask(void);
-char *getArmingDisableFlagName(int index);
+
 
