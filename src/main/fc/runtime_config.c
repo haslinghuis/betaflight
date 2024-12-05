@@ -65,7 +65,6 @@ const char *armingDisableFlagNames[]= {
 };
 STATIC_ASSERT(ARRAYLEN(armingDisableFlagNames) == ARMING_DISABLE_FLAGS_COUNT, "armingDisableFlagNames size mismatch");
 
-
 static armingDisableFlags_e armingDisableFlags = 0;
 
 void setArmingDisabled(armingDisableFlags_e flag)

@@ -90,7 +90,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
 
             // Rotate to the next arming disabled reason after a 0.5 second time delay
             // or if the current flag is no longer set or if just starting
-            if (cmp32(currentTimeUs, armingDisabledUpdateTimeUs) > 500000
+            if (cmpTimeUs(currentTimeUs, armingDisabledUpdateTimeUs) > 500000
                 || (flags & armingDisabledDisplayFlag) == 0) {
                 armingDisabledUpdateTimeUs = currentTimeUs;
 
@@ -103,6 +103,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
                 }
                 armingDisabledDisplayFlag = flag;                                   // store for next iteration
             }
+
             tfp_sprintf(warningText, "%s", getArmingDisableFlagName(armingDisabledDisplayFlag));
             *displayAttr = DISPLAYPORT_SEVERITY_WARNING;
             return;
@@ -266,35 +267,33 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
 #endif // USE_ADC_INTERNAL
 
 #ifdef USE_ESC_SENSOR
+#define OSD_WARNINGS_ESC_SENSOR_SIZE 12
     // Show warning if we lose motor output, the ESC is overheating or excessive current draw
-    if (featureIsEnabled(FEATURE_ESC_SENSOR) && osdWarnGetState(OSD_WARNING_ESC_FAIL)) {
-        char escWarningMsg[OSD_FORMAT_MESSAGE_BUFFER_SIZE];
-        unsigned pos = 0;
-
+    if (featureIsEnabled(FEATURE_ESC_SENSOR) && osdWarnGetState(OSD_WARNING_ESC_FAIL) && ARMING_FLAG(ARMED)) {
+        char escWarningMsg[OSD_WARNINGS_ESC_SENSOR_SIZE];
         const char *title = "ESC";
 
         // center justify message
-        while (pos < (OSD_WARNINGS_MAX_SIZE - (strlen(title) + getMotorCount())) / 2) {
-            escWarningMsg[pos++] = ' ';
-        }
+        unsigned pos = (OSD_WARNINGS_ESC_SENSOR_SIZE - (strlen(title) + getMotorCount())) / 2;
+        memset(escWarningMsg, ' ', pos);
 
-        strcpy(escWarningMsg + pos, title);
+        strncpy(escWarningMsg + pos, title, OSD_WARNINGS_ESC_SENSOR_SIZE - pos - 1);
         pos += strlen(title);
 
-        unsigned i = 0;
         unsigned escWarningCount = 0;
-        while (i < getMotorCount() && pos < OSD_FORMAT_MESSAGE_BUFFER_SIZE - 1) {
+        for (unsigned i = 0; i < getMotorCount() && pos < OSD_WARNINGS_ESC_SENSOR_SIZE - 1; i++) {
             escSensorData_t *escData = getEscSensorData(i);
             const char motorNumber = '1' + i;
             // if everything is OK just display motor number else R, T or C
             char warnFlag = motorNumber;
-            if (ARMING_FLAG(ARMED) && osdConfig()->esc_rpm_alarm != ESC_RPM_ALARM_OFF && (uint32_t)erpmToRpm(escData->rpm) <= (uint32_t)osdConfig()->esc_rpm_alarm) {
+
+            if (osdConfig()->esc_rpm_alarm != ESC_RPM_ALARM_OFF && (uint32_t)erpmToRpm(escData->rpm) <= (uint32_t)osdConfig()->esc_rpm_alarm) {
                 warnFlag = 'R';
             }
             if (osdConfig()->esc_temp_alarm != ESC_TEMP_ALARM_OFF && escData->temperature >= osdConfig()->esc_temp_alarm) {
                 warnFlag = 'T';
             }
-            if (ARMING_FLAG(ARMED) && osdConfig()->esc_current_alarm != ESC_CURRENT_ALARM_OFF && escData->current >= osdConfig()->esc_current_alarm) {
+            if (osdConfig()->esc_current_alarm != ESC_CURRENT_ALARM_OFF && escData->current >= osdConfig()->esc_current_alarm) {
                 warnFlag = 'C';
             }
 
@@ -303,8 +302,6 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
             if (warnFlag != motorNumber) {
                 escWarningCount++;
             }
-
-            i++;
         }
 
         escWarningMsg[pos] = '\0';
@@ -316,11 +313,12 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
             return;
         }
     }
+#undef OSD_WARNINGS_ESC_SENSOR_SIZE
 #endif // USE_ESC_SENSOR
 
 #if defined(USE_DSHOT) && defined(USE_DSHOT_TELEMETRY)
     // Show esc error
-    if (osdWarnGetState(OSD_WARNING_ESC_FAIL)) {
+    if (osdWarnGetState(OSD_WARNING_ESC_FAIL) && ARMING_FLAG(ARMED)) {
         uint32_t dshotEscErrorLengthMotorBegin;
         uint32_t dshotEscErrorLength = 0;
 
@@ -343,7 +341,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
             warningText[dshotEscErrorLength++] = '0' + k + 1;
 
             // Add esc warnings
-            if (ARMING_FLAG(ARMED) && osdConfig()->esc_rpm_alarm != ESC_RPM_ALARM_OFF
+            if (osdConfig()->esc_rpm_alarm != ESC_RPM_ALARM_OFF
                     && isDshotMotorTelemetryActive(k)
                     && (dshotTelemetryState.motorState[k].telemetryData[DSHOT_TELEMETRY_TYPE_eRPM] * 100 * 2 / motorConfig()->motorPoleCount) <= osdConfig()->esc_rpm_alarm) {
                 warningText[dshotEscErrorLength++] = 'R';
@@ -353,7 +351,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
                     && dshotTelemetryState.motorState[k].telemetryData[DSHOT_TELEMETRY_TYPE_TEMPERATURE] >= osdConfig()->esc_temp_alarm) {
                 warningText[dshotEscErrorLength++] = 'T';
             }
-            if (ARMING_FLAG(ARMED) && osdConfig()->esc_current_alarm != ESC_CURRENT_ALARM_OFF
+            if (osdConfig()->esc_current_alarm != ESC_CURRENT_ALARM_OFF
                     && (dshotTelemetryState.motorState[k].telemetryTypes & (1 << DSHOT_TELEMETRY_TYPE_CURRENT)) != 0
                     && dshotTelemetryState.motorState[k].telemetryData[DSHOT_TELEMETRY_TYPE_CURRENT] >= osdConfig()->esc_current_alarm) {
                 warningText[dshotEscErrorLength++] = 'C';
