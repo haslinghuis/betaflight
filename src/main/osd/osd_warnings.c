@@ -293,15 +293,16 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
                 *p++ = '0' + (i + 1) % 10; // 123..9012..
             }
         }
+
         *p++ = 0;  // terminate string
         if (escWarning) {
             const int msgLen = strlen(warningText);
             const int minMsgLen = 11;   // intended minimum width
             if (msgLen < minMsgLen) {
                 // enough space to center justify message
-                const int ofs = (minMsgLen - msgLen) / 2;
-                memmove(warningText + ofs, warningText, msgLen + 1);  // copy including '\0'
-                memset(warningText, ' ', ofs);                        // left padding with spaces
+                const int offset = (minMsgLen - msgLen) / 2;
+                memmove(warningText + offset, warningText, msgLen + 1);  // copy including '\0'
+                memset(warningText, ' ', offset);                        // left padding with spaces
             }
             *displayAttr = DISPLAYPORT_SEVERITY_WARNING;
             *blinking = true;
@@ -315,7 +316,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
 
 #if defined(USE_DSHOT) && defined(USE_DSHOT_TELEMETRY)
     // Show esc error
-    if (osdWarnGetState(OSD_WARNING_ESC_FAIL) && ARMING_FLAG(ARMED)) {
+    if (motorConfig()->dev.useDshotTelemetry && osdWarnGetState(OSD_WARNING_ESC_FAIL) && ARMING_FLAG(ARMED)) {
         uint32_t dshotEscErrorLengthMotorBegin;
         uint32_t dshotEscErrorLength = 0;
 
