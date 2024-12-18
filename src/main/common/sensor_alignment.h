@@ -55,11 +55,12 @@ typedef union sensorAlignment_u {
     };
 } sensorAlignment_t;
 
-#define SENSOR_ALIGNMENT(ROLL, PITCH, YAW) ((sensorAlignment_t){\
-    .roll = DEGREES_TO_DECIDEGREES(ROLL), \
-    .pitch = DEGREES_TO_DECIDEGREES(PITCH), \
-    .yaw = DEGREES_TO_DECIDEGREES(YAW), \
-})
+#define SENSOR_ALIGNMENT(ROLL, PITCH, YAW) ((const sensorAlignment_t){  \
+    .roll = DEGREES_TO_DECIDEGREES(ROLL),                               \
+    .pitch = DEGREES_TO_DECIDEGREES(PITCH),                             \
+    .yaw = DEGREES_TO_DECIDEGREES(YAW),                                 \
+})                                                                      \
+/**/
 
 #define CUSTOM_ALIGN_CW90_DEG        SENSOR_ALIGNMENT( 0,   0,  90 )
 #define CUSTOM_ALIGN_CW180_DEG       SENSOR_ALIGNMENT( 0,   0, 180 )
