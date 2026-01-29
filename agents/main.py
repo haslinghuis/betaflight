@@ -2,6 +2,7 @@ from crewai import Agent, Task, Crew, Process
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from prompts import REVIEWER_PROMPT
+from tools import BetaflightTools
 import subprocess
 
 # Configure the Local LLM connection
@@ -11,30 +12,12 @@ local_llm = ChatOpenAI(
     api_key="ollama" # Required field, but ignored by Ollama
 )
 
-# TOOL: Allows the Agent to search the codebase
-@tool("grep_codebase")
-def grep_codebase(query: str, file_pattern: str = "*.c"):
-    """Searches the Betaflight codebase for relevant code snippets."""
-    import os
-    result = ""
-    for root, dirs, files in os.walk("/workspace/src"):
-        for file in files:
-            if file.endswith(file_pattern.split("*")[-1]):
-                try:
-                    with open(os.path.join(root, file), 'r') as f:
-                        content = f.read()
-                        if query.lower() in content.lower():
-                            result += f"File: {os.path.join(root, file)}\nSnippet: {content[:500]}...\n\n"
-                except:
-                    pass
-    return result[:2000]  # Limit output
-
 # AGENT: The Functional Architect
 functional_architect = Agent(
     role='Functional Architect',
     goal='Design new features for Betaflight based on user requirements',
-    backstory='Expert in drone flight control systems and Betaflight architecture. Translates high-level ideas into technical specifications.',
-    tools=[grep_codebase],
+    backstory='Expert in drone flight control systems and Betaflight architecture. Translates high-level ideas into technical specifications. Always searches the codebase for existing implementations.',
+    tools=[BetaflightTools.search_codebase, BetaflightTools.read_file_content],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -81,6 +64,18 @@ safety_reviewer = Agent(
     allow_delegation=False,
     verbose=True
 )
+
+# Example Task: Discovery
+discovery_task = Task(
+    description="""
+    1. Search for all instances of 'gpsRescue' in the codebase.
+    2. Identify the primary header file defining the GPS Rescue state machine.
+    3. Read the code to understand how it currently handles 'home distance'.
+    """,
+    expected_output="A summary of the current GPS Rescue logic and which files need modification.",
+    agent=functional_architect
+)
+
 design_task = Task(
     description='Design a new GPS Rescue behavior for Betaflight',
     agent=functional_architect,
@@ -112,7 +107,7 @@ testing_task = Task(
 # Create the Crew
 crew = Crew(
     agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer],
-    tasks=[design_task, hardware_task, code_task, testing_task, review_task],
+    tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task],
     process=Process.sequential
 )
 

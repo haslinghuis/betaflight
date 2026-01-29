@@ -20,9 +20,10 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 
 - Multi-agent collaboration with specialized roles
 - Local LLM integration via Ollama
-- Codebase search tool for context-aware development
+- Codebase search and read tools for context-aware development
 - Human-in-the-loop checkpoints for critical decisions
 - Safety auditing with Betaflight-specific rules
+- Discovery phase to understand existing code before design
 
 ## Requirements
 
