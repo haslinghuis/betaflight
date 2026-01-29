@@ -1,0 +1,55 @@
+services:
+  # The Betaflight Build Environment (from PR #14829)
+  bf-builder:
+    build: 
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - .:/workspace
+      - training-data:/data
+    working_dir: /workspace
+    command: sleep infinity
+    network_mode: service:ollama # Shared network for speed
+
+  # Local LLM Service (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_storage:/root/.ollama
+    # Enable GPU support (NVIDIA only)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Automatic Model Puller (One-time setup)
+  ollama-pull-model:
+    image: ollama/ollama:latest
+    container_name: ollama-pull-model
+    volumes:
+      - ollama_storage:/root/.ollama
+    entrypoint: /bin/sh
+    command: "-c 'ollama serve & sleep 5 && ollama pull deepseek-coder-v2:lite && pkill ollama'"
+    depends_on:
+      - ollama
+
+  # Your AI Squad
+  ai-agents:
+    build: ./agents
+    volumes:
+      - .:/workspace
+      - training-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock # The "Secret Sauce"
+    environment:
+      - OPENAI_API_BASE=http://ollama:11434/v1 # Point to local Ollama
+    depends_on:
+      - bf-builder
+      - ollama
+
+volumes:
+  training-data: # Shared volume for training data
+  ollama_storage:
