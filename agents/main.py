@@ -4,8 +4,9 @@ from langchain_openai import ChatOpenAI
 from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
 from tools import BetaflightTools, build_and_debug, scan_for_violations, run_sitl_test
 from audit_tools import CynicAuditTools
-from data_harvester import DataHarvester
+from harvester import harvester
 import subprocess
+import argparse
 
 # Configure the Local LLM connection
 local_llm = ChatOpenAI(
@@ -172,26 +173,60 @@ testing_task = Task(
     expected_output='Test files and validation results.'
 )
 
+# Final Verification Task: SITL Test + Cynic Audit
+verification_task = Task(
+    description="""
+    Perform final verification of the implemented code:
+    1. Run SITL automated flight test to ensure no scheduler overruns
+    2. Execute Cynic audit for safety and blocking code violations
+    3. Only pass if both tests succeed
+    """,
+    expected_output='Flight-ready C implementation with 0 scheduler overruns and clean safety audit.',
+    agent=test_pilot,  # Test Pilot handles SITL, but will delegate Cynic audit
+    callback=harvester.save_learning  # Harvest successful corrections
+)
+
 # Create the Crew
 crew = Crew(
     agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer, cynic, aero_physicist, librarian, test_pilot, research_agent],
-    tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task],
+    tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task, verification_task],
     process=Process.hierarchical,
     manager_agent=foreman
 )
 
 # Run the crew
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Betaflight AI Squad')
+    parser.add_argument('--task', type=str,
+                       default='Implement GPS Rescue feature for Betaflight',
+                       help='Task description for the AI squad')
+    parser.add_argument('--output', type=str,
+                       default='ai_squad_output.txt',
+                       help='Output file for results')
+
+    args = parser.parse_args()
+
+    # Create dynamic analysis task based on input
+    analysis_task = Task(
+        description=f"""
+        Analyze the following code changes and requirements: {args.task}
+
+        1. Search the codebase for relevant existing implementations
+        2. Identify potential safety and performance issues
+        3. Check for compliance with Betaflight coding standards
+        4. Verify hardware compatibility
+        5. Ensure no blocking operations in flight control loops
+        """,
+        expected_output='Comprehensive code review with safety analysis and recommendations.',
+        agent=functional_architect
+    )
+
+    # Update crew with dynamic task
+    crew.tasks = [analysis_task, design_task, hardware_task, code_task, testing_task, review_task, verification_task]
+
     result = crew.kickoff()
     print(result)
-    
-    # Harvest successful corrections for fine-tuning
-    harvester = DataHarvester()
-    # TODO: Parse result for Cynic corrections and add to harvester
-    # For now, just save an example
-    harvester.add_entry(
-        input_prompt="Implement GPS Rescue feature",
-        corrected_code=str(result),  # Placeholder - parse actual corrections
-        context="Betaflight firmware development"
-    )
-    harvester.save()
+
+    # Save output for GitHub Action
+    with open(args.output, 'w') as f:
+        f.write(str(result))

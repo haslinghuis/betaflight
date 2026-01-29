@@ -62,6 +62,59 @@ This creates `betaflight_ai_training_data.zip` containing:
 2. Other teams can download it via the knowledge-sync service
 3. Ensures consistent AI behavior across different Betaflight development teams
 
+## Data Harvester
+
+The **Data Harvester** captures successful bug fixes and agent interactions to create training data for fine-tuning local models.
+
+### How It Works
+- Triggers only after both **Cynic Audit** and **SITL Test** pass
+- Extracts instruction, critique, and solution from agent conversations
+- Saves in JSONL format suitable for fine-tuning DeepSeek/Llama models
+- Includes human approval workflow to ensure data quality
+
+### Training Data Format
+Each entry contains:
+```json
+{
+  "instruction": "Task description",
+  "critique": "Cynic's feedback on issues found",
+  "solution": "Final corrected implementation",
+  "context": "Betaflight v4.6-dev",
+  "verified": true,
+  "human_approved": false
+}
+```
+
+### Human Approval
+Only human-approved entries are used for fine-tuning:
+```python
+from harvester import harvester
+harvester.mark_human_approved()  # Mark latest entry as approved
+```
+
+## GitHub Actions Integration
+
+The AI squad can automatically review code changes on pull requests.
+
+### Setup
+1. The workflow file is located at `.github/workflows/ai-squad-review.yml`
+2. Triggers on PRs that modify source code (excluding tests and docs)
+3. Runs the full AI squad analysis pipeline
+
+### What It Does
+- Builds the development environment
+- Analyzes changed files for safety violations
+- Runs Cynic audit for blocking code patterns
+- Comments on the PR with findings
+- Harvests training data from successful reviews
+- Uploads training data as artifacts
+
+### Benefits
+- **Automated Code Review**: Catches safety issues before merge
+- **Continuous Learning**: Each review improves the AI models
+- **Community Knowledge**: Training data is shared across teams
+- **Quality Assurance**: Ensures Betaflight coding standards are maintained
+
 ## Installation
 
 ### Docker and Docker Compose
