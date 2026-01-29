@@ -16,9 +16,13 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 - **Testing Agent**: Creates and runs unit tests for code changes.
 - **Safety Reviewer**: Audits code for safety and standards.
 
-## Usage
+## Features
 
-Modify the tasks in `main.py` to define your development goals. The agents will collaborate to design, implement, and review code changes.
+- Multi-agent collaboration with specialized roles
+- Local LLM integration via Ollama
+- Codebase search tool for context-aware development
+- Human-in-the-loop checkpoints for critical decisions
+- Safety auditing with Betaflight-specific rules
 
 ## Requirements
 

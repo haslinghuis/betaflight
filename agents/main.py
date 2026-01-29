@@ -1,6 +1,7 @@
 from crewai import Agent, Task, Crew, Process
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
+from prompts import REVIEWER_PROMPT
 import subprocess
 
 # Configure the Local LLM connection
@@ -10,19 +11,30 @@ local_llm = ChatOpenAI(
     api_key="ollama" # Required field, but ignored by Ollama
 )
 
-# TOOL: Allows the Agent to compile the code
-@tool("build_betaflight")
-def build_betaflight(target: str):
-    """Executes 'make <target>' inside the bf-builder container."""
-    cmd = f"docker exec bf-builder make {target}"
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+# TOOL: Allows the Agent to search the codebase
+@tool("grep_codebase")
+def grep_codebase(query: str, file_pattern: str = "*.c"):
+    """Searches the Betaflight codebase for relevant code snippets."""
+    import os
+    result = ""
+    for root, dirs, files in os.walk("/workspace/src"):
+        for file in files:
+            if file.endswith(file_pattern.split("*")[-1]):
+                try:
+                    with open(os.path.join(root, file), 'r') as f:
+                        content = f.read()
+                        if query.lower() in content.lower():
+                            result += f"File: {os.path.join(root, file)}\nSnippet: {content[:500]}...\n\n"
+                except:
+                    pass
+    return result[:2000]  # Limit output
 
 # AGENT: The Functional Architect
 functional_architect = Agent(
     role='Functional Architect',
     goal='Design new features for Betaflight based on user requirements',
     backstory='Expert in drone flight control systems and Betaflight architecture. Translates high-level ideas into technical specifications.',
+    tools=[grep_codebase],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -64,7 +76,7 @@ testing_agent = Agent(
 safety_reviewer = Agent(
     role='Safety Reviewer',
     goal='Audit code for safety, performance, and Betaflight standards',
-    backstory='Senior Firmware Engineer focused on preventing crashes and ensuring real-time performance. Rejects any code that uses blocking delays (delayMicroseconds) inside the main loop, exceeds stack size limits of STM32 processors, causes race conditions, memory leaks, or flyaway risks. Enforces Betaflight coding standards and checks for proper use of atomic operations for shared variables.',
+    backstory=REVIEWER_PROMPT,
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -72,7 +84,8 @@ safety_reviewer = Agent(
 design_task = Task(
     description='Design a new GPS Rescue behavior for Betaflight',
     agent=functional_architect,
-    expected_output='A Markdown specification document outlining the feature requirements and integration points.'
+    expected_output='A Markdown specification document outlining the feature requirements and integration points.',
+    human_input=True
 )
 
 # Example Task: Implement the code
