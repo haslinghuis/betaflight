@@ -5,9 +5,11 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
     volumes:
-      - .:/workspace
+      - .:/workspace/src        # Firmware Repo
+      - ../betaflight-com:/workspace/docs           # Website Repo (adjust path as needed)
+      - ./datasheets:/workspace/hardware_docs      # Local PDFs (STM32/AT32)
       - training-data:/data
-    working_dir: /workspace
+    working_dir: /workspace/src
     command: sleep infinity
     network_mode: service:ollama # Shared network for speed
 
@@ -41,7 +43,9 @@ services:
   ai-agents:
     build: ./agents
     volumes:
-      - .:/workspace
+      - .:/workspace/src        # Firmware Repo
+      - ../betaflight-com:/workspace/docs           # Website Repo
+      - ./datasheets:/workspace/hardware_docs      # Local PDFs
       - training-data:/data
       - /var/run/docker.sock:/var/run/docker.sock # The "Secret Sauce"
     environment:

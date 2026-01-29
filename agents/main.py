@@ -1,8 +1,8 @@
 from crewai import Agent, Task, Crew, Process
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
-from prompts import REVIEWER_PROMPT
-from tools import BetaflightTools
+from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
+from tools import BetaflightTools, build_and_debug, scan_for_violations
 import subprocess
 
 # Configure the Local LLM connection
@@ -26,10 +26,13 @@ functional_architect = Agent(
 # AGENT: The Technical Lead
 tech_lead = Agent(
     role='Lead Firmware Engineer',
-    goal='Write efficient C code for Betaflight targets',
-    backstory='Expert in STM32 and Betaflight architecture. Obsessed with loop times.',
-    tools=[build_betaflight],
+    goal='Generate and compile error-free Betaflight code.',
+    backstory="""You are an expert C developer. If a build fails, 
+    you use the 'read_file_content' tool to look at the line numbers 
+    reported by the compiler and fix your mistakes immediately.""",
+    tools=[build_and_debug, BetaflightTools.read_file_content],
     llm=local_llm,
+    max_iter=3, # Allow the agent to try fixing its code 3 times before asking for help
     allow_delegation=False,
     verbose=True
 )
@@ -62,6 +65,69 @@ safety_reviewer = Agent(
     backstory=REVIEWER_PROMPT,
     llm=local_llm,
     allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Cynic (Skeptic)
+cynic = Agent(
+    role='Lead Skeptic',
+    goal='Find flaws and potential failures in proposed code',
+    backstory=CYNIC_PROMPT,
+    tools=[scan_for_violations],
+    llm=local_llm,
+    allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Aero-Physicist
+aero_physicist = Agent(
+    role='Aerospace Engineer',
+    goal='Ensure code changes align with flight physics and control theory',
+    backstory='Expert in PID control theory, vibrations, and thrust-to-weight dynamics. Prevents flyaways from poor filtering or control logic.',
+    llm=local_llm,
+    allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Librarian (Hardware/Docs Expert)
+librarian = Agent(
+    role='Hardware and Documentation Expert',
+    goal='Provide accurate hardware information and update documentation',
+    backstory='RAG-enabled expert for STM32/AT32 datasheets and betaflight.com updates. Ensures register addresses and DMA assignments are correct.',
+    tools=[BetaflightTools.search_codebase, BetaflightTools.read_file_content],
+    llm=local_llm,
+    allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Test Pilot (SITL Expert)
+test_pilot = Agent(
+    role='SITL Tester',
+    goal='Run automated flight tests in the simulator',
+    backstory='Compiles SITL target and runs virtual flight tests to validate functionality. Analyzes blackbox logs for stability.',
+    tools=[build_and_debug],
+    llm=local_llm,
+    allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Research Agent (DevOps for AI)
+research_agent = Agent(
+    role='Research and Infrastructure Specialist',
+    goal='Keep the AI environment updated and optimized',
+    backstory='Audits Docker infrastructure, tests new models, and ensures the development environment stays current.',
+    llm=local_llm,
+    allow_delegation=False,
+    verbose=True
+)
+
+# AGENT: The Foreman (Supervisor)
+foreman = Agent(
+    role='Foreman',
+    goal='Coordinate all agents and manage human-in-the-loop checkpoints',
+    backstory='Meticulous project manager who values flight safety above all else. Ensures quality and cross-agent collaboration.',
+    allow_delegation=True,
+    llm=local_llm,
     verbose=True
 )
 
@@ -106,9 +172,10 @@ testing_task = Task(
 
 # Create the Crew
 crew = Crew(
-    agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer],
+    agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer, cynic, aero_physicist, librarian, test_pilot, research_agent],
     tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task],
-    process=Process.sequential
+    process=Process.hierarchical,
+    manager_agent=foreman
 )
 
 # Run the crew
