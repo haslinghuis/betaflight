@@ -47,6 +47,7 @@ services:
       - ../betaflight-com:/workspace/docs           # Website Repo
       - ./datasheets:/workspace/hardware_docs      # Local PDFs
       - training-data:/data
+      - shared_knowledge:/workspace/shared_knowledge  # Shared intelligence
       - /var/run/docker.sock:/var/run/docker.sock # The "Secret Sauce"
     environment:
       - OPENAI_API_BASE=http://ollama:11434/v1 # Point to local Ollama
@@ -54,6 +55,17 @@ services:
       - bf-builder
       - ollama
 
+  # Knowledge Sync (Shared Intelligence)
+  knowledge-sync:
+    image: alpine:latest
+    container_name: knowledge-sync
+    volumes:
+      - shared_knowledge:/app/db
+    command: >
+      sh -c "wget -q https://github.com/betaflight/ai-squad/releases/latest/download/vector_db.zip 
+      && unzip vector_db.zip -d /app/db || echo 'Vector DB not available yet'"
+
 volumes:
   training-data: # Shared volume for training data
   ollama_storage:
+  shared_knowledge: # Shared vector store and datasets
