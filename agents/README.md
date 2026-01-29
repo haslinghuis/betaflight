@@ -33,7 +33,7 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 - Autonomous compilation and error fixing with GCC log parsing
 - Cross-repository documentation synchronization
 - SITL automated testing for flight validation
-- Zero-trust skeptical auditing for architectural violations
+- Zero-trust skeptical auditing with static analysis tools
 
 ## Requirements
 

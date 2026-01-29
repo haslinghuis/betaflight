@@ -2,7 +2,8 @@ from crewai import Agent, Task, Crew, Process
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
-from tools import BetaflightTools, build_and_debug, scan_for_violations
+from tools import BetaflightTools, build_and_debug, scan_for_violations, run_sitl_test
+from audit_tools import CynicAuditTools
 import subprocess
 
 # Configure the Local LLM connection
@@ -73,7 +74,7 @@ cynic = Agent(
     role='Lead Skeptic',
     goal='Find flaws and potential failures in proposed code',
     backstory=CYNIC_PROMPT,
-    tools=[scan_for_violations],
+    tools=[scan_for_violations, CynicAuditTools.check_non_blocking_compliance, CynicAuditTools.check_atomic_access],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -105,7 +106,7 @@ test_pilot = Agent(
     role='SITL Tester',
     goal='Run automated flight tests in the simulator',
     backstory='Compiles SITL target and runs virtual flight tests to validate functionality. Analyzes blackbox logs for stability.',
-    tools=[build_and_debug],
+    tools=[build_and_debug, run_sitl_test],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
