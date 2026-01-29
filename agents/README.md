@@ -34,6 +34,33 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 - Cross-repository documentation synchronization
 - SITL automated testing for flight validation
 - Zero-trust skeptical auditing with static analysis tools
+- **Shared Intelligence**: Community-shared vector stores and gold datasets for consistent AI behavior across teams
+
+## Shared Intelligence
+
+The AI squad supports sharing "training data" (vector stores, gold datasets, and persona libraries) across the Betaflight community for decentralized expert systems.
+
+### How It Works
+- Agents automatically harvest successful corrections from Cynic-to-Tech-Lead interactions
+- Data is stored in a shared volume accessible to all team members
+- Community can share vector stores via GitHub releases
+- Knowledge-sync service downloads latest shared intelligence on startup
+
+### Creating Training Data
+Run the packaging script to create shareable training data:
+```bash
+./package_training_data.sh
+```
+
+This creates `betaflight_ai_training_data.zip` containing:
+- Gold dataset of successful corrections (JSONL format)
+- Vector store for RAG retrieval
+- Metadata about agents and tools
+
+### Sharing with Community
+1. Upload the zip file to GitHub releases
+2. Other teams can download it via the knowledge-sync service
+3. Ensures consistent AI behavior across different Betaflight development teams
 
 ## Installation
 

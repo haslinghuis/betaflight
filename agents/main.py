@@ -4,6 +4,7 @@ from langchain_openai import ChatOpenAI
 from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
 from tools import BetaflightTools, build_and_debug, scan_for_violations, run_sitl_test
 from audit_tools import CynicAuditTools
+from data_harvester import DataHarvester
 import subprocess
 
 # Configure the Local LLM connection
@@ -183,3 +184,14 @@ crew = Crew(
 if __name__ == "__main__":
     result = crew.kickoff()
     print(result)
+    
+    # Harvest successful corrections for fine-tuning
+    harvester = DataHarvester()
+    # TODO: Parse result for Cynic corrections and add to harvester
+    # For now, just save an example
+    harvester.add_entry(
+        input_prompt="Implement GPS Rescue feature",
+        corrected_code=str(result),  # Placeholder - parse actual corrections
+        context="Betaflight firmware development"
+    )
+    harvester.save()
