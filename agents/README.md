@@ -35,6 +35,67 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 - SITL automated testing for flight validation
 - Zero-trust skeptical auditing with static analysis tools
 
+## Installation
+
+### Docker and Docker Compose
+
+#### Ubuntu
+1. Update your package index:
+   ```
+   sudo apt update
+   ```
+2. Install Docker:
+   ```
+   sudo apt install docker.io
+   ```
+3. Start and enable Docker:
+   ```
+   sudo systemctl start docker
+   sudo systemctl enable docker
+   ```
+4. Add your user to the docker group (optional, to run without sudo):
+   ```
+   sudo usermod -aG docker $USER
+   ```
+   Log out and back in for changes to take effect.
+5. Install Docker Compose:
+   ```
+   sudo apt install docker-compose
+   ```
+
+#### Windows
+1. Download Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop).
+2. Run the installer and follow the setup wizard.
+3. Docker Compose is included with Docker Desktop.
+
+#### macOS
+1. Download Docker Desktop from [docker.com](https://www.docker.com/products/docker-desktop).
+2. Open the downloaded .dmg file and drag Docker to Applications.
+3. Launch Docker Desktop from Applications.
+4. Docker Compose is included with Docker Desktop.
+
+### NVIDIA Container Toolkit (for GPU acceleration, optional)
+
+#### Ubuntu
+1. Install NVIDIA drivers (if not already installed).
+2. Add the NVIDIA package repository:
+   ```
+   distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+   curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+   curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+   ```
+3. Install nvidia-docker2:
+   ```
+   sudo apt-get update && sudo apt-get install -y nvidia-docker2
+   ```
+4. Restart Docker:
+   ```
+   sudo systemctl restart docker
+   ```
+
+#### Windows/macOS
+NVIDIA Container Toolkit is not required for Docker Desktop on Windows/macOS; GPU acceleration is handled automatically if NVIDIA drivers are installed.
+
 ## Requirements
 
 - Docker and Docker Compose
