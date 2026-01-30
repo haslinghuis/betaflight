@@ -12,9 +12,9 @@ class BetaflightHarvester:
     """
 
     def __init__(self, file_path="betaflight_gold_dataset.jsonl"):
-        self.file_path = file_path
+        self.file_path = os.path.join(os.path.dirname(__file__), file_path)
         # Ensure the directory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self.file_path), exist_ok=True)
 
     def save_learning(self, task_output: Any) -> None:
         """

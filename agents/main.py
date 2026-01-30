@@ -1,18 +1,18 @@
-from crewai import Agent, Task, Crew, Process
+from crewai import Agent, Task, Crew, Process, LLM
 from langchain.tools import tool
-from langchain_openai import ChatOpenAI
 from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
-from tools import BetaflightTools, build_and_debug, scan_for_violations, run_sitl_test
-from audit_tools import CynicAuditTools
+from tools import search_codebase, read_file_content, build_and_debug, run_sitl_test
+from audit_tools import check_non_blocking_compliance, check_atomic_access
 from harvester import harvester
 import subprocess
 import argparse
 
 # Configure the Local LLM connection
-local_llm = ChatOpenAI(
-    model='deepseek-coder-v2:lite', # High-performance coding model
-    base_url="http://ollama:11434/v1",
-    api_key="ollama" # Required field, but ignored by Ollama
+local_llm = LLM(
+    model='deepseek-coder-v2:lite',
+    base_url="http://ollama:11434",
+    api_key="ollama",  # Dummy key for Ollama
+    provider="ollama"
 )
 
 # AGENT: The Functional Architect
@@ -20,7 +20,7 @@ functional_architect = Agent(
     role='Functional Architect',
     goal='Design new features for Betaflight based on user requirements',
     backstory='Expert in drone flight control systems and Betaflight architecture. Translates high-level ideas into technical specifications. Always searches the codebase for existing implementations.',
-    tools=[BetaflightTools.search_codebase, BetaflightTools.read_file_content],
+    tools=[search_codebase, read_file_content],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -33,7 +33,7 @@ tech_lead = Agent(
     backstory="""You are an expert C developer. If a build fails, 
     you use the 'read_file_content' tool to look at the line numbers 
     reported by the compiler and fix your mistakes immediately.""",
-    tools=[build_and_debug, BetaflightTools.read_file_content],
+    tools=[build_and_debug, read_file_content],
     llm=local_llm,
     max_iter=3, # Allow the agent to try fixing its code 3 times before asking for help
     allow_delegation=False,
@@ -55,7 +55,7 @@ testing_agent = Agent(
     role='Testing Agent',
     goal='Create and run unit tests for Betaflight code changes',
     backstory='Focused on ensuring code quality through comprehensive testing. Generates test cases and validates functionality against Betaflight standards.',
-    tools=[build_betaflight],
+    tools=[build_and_debug],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -76,7 +76,7 @@ cynic = Agent(
     role='Lead Skeptic',
     goal='Find flaws and potential failures in proposed code',
     backstory=CYNIC_PROMPT,
-    tools=[scan_for_violations, CynicAuditTools.check_non_blocking_compliance, CynicAuditTools.check_atomic_access],
+    tools=[check_non_blocking_compliance, check_atomic_access],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -97,7 +97,7 @@ librarian = Agent(
     role='Hardware and Documentation Expert',
     goal='Provide accurate hardware information and update documentation',
     backstory='RAG-enabled expert for STM32/AT32 datasheets and betaflight.com updates. Ensures register addresses and DMA assignments are correct.',
-    tools=[BetaflightTools.search_codebase, BetaflightTools.read_file_content],
+    tools=[search_codebase, read_file_content],
     llm=local_llm,
     allow_delegation=False,
     verbose=True
@@ -171,6 +171,13 @@ testing_task = Task(
     description='Generate unit tests for the implemented code and validate functionality',
     agent=testing_agent,
     expected_output='Test files and validation results.'
+)
+
+# Example Task: Cynic Review
+review_task = Task(
+    description='Perform skeptical review of the code for safety violations, blocking calls, and atomic access issues',
+    agent=cynic,
+    expected_output='Safety audit report identifying any critical issues that need fixing.'
 )
 
 # Final Verification Task: SITL Test + Cynic Audit

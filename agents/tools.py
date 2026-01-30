@@ -1,33 +1,31 @@
 import subprocess
 import re
-from langchain.tools import tool
+from crewai.tools import tool
 
-class BetaflightTools:
+@tool("search_codebase")
+def search_codebase(query: str) -> str:
+    """Searches the Betaflight /src directory for a specific string or regex.
+    Returns filenames and line numbers."""
+    # Using grep to find the pattern in the src directory
+    cmd = ["grep", "-rn", "--exclude-dir=obj", query, "/workspace/src"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
-    @tool("search_codebase")
-    def search_codebase(query: str):
-        """Searches the Betaflight /src directory for a specific string or regex.
-        Returns filenames and line numbers."""
-        # Using grep to find the pattern in the src directory
-        cmd = ["grep", "-rn", "--exclude-dir=obj", query, "/workspace/src"]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+    if not result.stdout:
+        return f"No results found for '{query}'."
+    # Limit output to first 20 results to avoid context window overflow
+    return "\n".join(result.stdout.splitlines()[:20])
 
-        if not result.stdout:
-            return f"No results found for '{query}'."
-        # Limit output to first 20 results to avoid context window overflow
-        return "\n".join(result.stdout.splitlines()[:20])
-
-    @tool("read_file_content")
-    def read_file_content(file_path: str):
-        """Reads the full content of a specific file. Use this after finding a file via search_codebase."""
-        try:
-            with open(file_path, 'r') as f:
-                return f.read()
-        except Exception as e:
-            return f"Error reading file: {e}"
+@tool("read_file_content")
+def read_file_content(file_path: str) -> str:
+    """Reads the full content of a specific file. Use this after finding a file via search_codebase."""
+    try:
+        with open(file_path, 'r') as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading file: {e}"
 
 @tool("build_and_debug")
-def build_and_debug(target: str):
+def build_and_debug(target: str) -> str:
     """Runs the build and returns a structured list of errors if it fails."""
     # Run the make command in the builder container
     cmd = f"docker exec bf-builder make {target}"
@@ -51,7 +49,7 @@ def build_and_debug(target: str):
     return error_report
 
 @tool("run_sitl_test")
-def run_sitl_test():
+def run_sitl_test() -> str:
     """Compiles and runs SITL target, then analyzes logs for stability."""
     # Placeholder: In practice, this would build SITL, run it, inject commands, and parse blackbox logs
     return "SITL Test: Build successful. Virtual flight stable. No task overruns detected."
