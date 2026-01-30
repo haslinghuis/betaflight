@@ -53,9 +53,9 @@ docker run --rm --network host \
   -v $(pwd)/betaflight-com:/workspace/docs \
   -v $(pwd)/agents:/workspace/agents \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
-  ai-agents:latest python /workspace/agents/main.py \
-  --task "Analyze PR #14620 motor telemetry refactoring for safety, performance, and Betaflight standards compliance" \
-  --output agents/output/pr_14620_analysis.txt
+  ai-agents:latest /bin/bash -c "cd /workspace/agents && python main.py \
+  --task 'Analyze PR #14620 motor telemetry refactoring for safety, performance, and Betaflight standards compliance' \
+  --output output/pr_14620_analysis.txt"
 ```
 
 #### Implement a New Feature
@@ -66,8 +66,8 @@ docker run --rm --network host \
   -v $(pwd)/betaflight-com:/workspace/docs \
   -v $(pwd)/agents:/workspace/agents \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
-  ai-agents:latest python /workspace/agents/main.py \
-  --task "Implement a new LED control feature for Betaflight with support for WS2812B strips"
+  ai-agents:latest /bin/bash -c "cd /workspace/agents && python main.py \
+  --task 'Implement a new LED control feature for Betaflight with support for WS2812B strips'"
 ```
 
 #### Analyze with Verbose Output
@@ -78,10 +78,10 @@ docker run --rm --network host \
   -v $(pwd)/betaflight-com:/workspace/docs \
   -v $(pwd)/agents:/workspace/agents \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
-  ai-agents:latest python /workspace/agents/main.py \
-  --task "Analyze PR #14620 motor telemetry refactoring" \
+  ai-agents:latest /bin/bash -c "cd /workspace/agents && python main.py \
+  --task 'Analyze PR #14620 motor telemetry refactoring' \
   --verbose \
-  --output agents/output/verbose_analysis.txt
+  --output output/verbose_analysis.txt"
 ```
 
 ### Prerequisites
