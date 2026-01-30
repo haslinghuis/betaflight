@@ -35,6 +35,11 @@ docker run --rm --network host \
   - The analysis results will be saved to this file
   - Can be used for integration with CI/CD pipelines
 
+- `--verbose`, `-v`: **Optional**. Enable verbose output with detailed agent reasoning and intermediate steps
+  - When enabled, shows detailed thinking process of each agent
+  - Useful for debugging and understanding agent decision-making
+  - Default: disabled (quiet mode for cleaner output)
+
 - `--help`, `-h`: **Optional**. Show help message and exit
   - Displays usage information and available options
 
@@ -63,6 +68,20 @@ docker run --rm --network host \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
   ai-agents:latest python /workspace/agents/main.py \
   --task "Implement a new LED control feature for Betaflight with support for WS2812B strips"
+```
+
+#### Analyze with Verbose Output
+```bash
+docker build -t ai-agents:latest ./agents && \
+docker run --rm --network host \
+  -v $(pwd):/workspace/src \
+  -v $(pwd)/betaflight-com:/workspace/docs \
+  -v $(pwd)/agents:/workspace/agents \
+  -e OPENAI_API_BASE=http://localhost:11434/v1 \
+  ai-agents:latest python /workspace/agents/main.py \
+  --task "Analyze PR #14620 motor telemetry refactoring" \
+  --verbose \
+  --output agents/output/verbose_analysis.txt
 ```
 
 ### Prerequisites

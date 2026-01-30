@@ -192,12 +192,7 @@ verification_task = Task(
     callback=harvester.save_learning  # Harvest successful corrections
 )
 
-# Create the Crew
-crew = Crew(
-    agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer, cynic, aero_physicist, librarian, test_pilot, research_agent],
-    tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task, verification_task],
-    process=Process.sequential
-)
+# Crew will be created dynamically in main based on task type
 
 # Run the crew
 if __name__ == "__main__":
@@ -215,6 +210,8 @@ if __name__ == "__main__":
     parser.add_argument('--output', type=str,
                        default='agents/output/ai_squad_output.txt',
                        help='Output file path where results will be saved (default: agents/output/ai_squad_output.txt)')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='Enable verbose output with detailed agent reasoning and intermediate steps')
 
     args = parser.parse_args()
 
@@ -281,7 +278,35 @@ if __name__ == "__main__":
             3. Recommend approval, rejection, or modifications
             4. Suggest any additional testing requirements
             """,
-            expected_output='Comprehensive PR review with final recommendations.',
+            expected_output="""
+            # PR Assessment Summary
+
+            ## Executive Summary
+            [Brief overview of the PR's impact and overall assessment]
+
+            ## Key Findings
+            - [Major finding 1]
+            - [Major finding 2]
+            - [Major finding 3]
+
+            ## Quality Rating
+            [Rate the code quality on a scale of 1-5, with justification]
+
+            ## Safety Assessment
+            [Rate the safety impact on a scale of 1-5, with justification]
+
+            ## Recommendation
+            [APPROVE/REJECT/MODIFY] - [Clear reasoning]
+
+            ## Required Actions
+            - [Action 1]
+            - [Action 2]
+            - [Action 3]
+
+            ## Testing Requirements
+            - [Test requirement 1]
+            - [Test requirement 2]
+            """,
             agent=foreman,
             context=[pr_analysis_task, safety_review_task, hardware_compat_task, cynic_review_task]
         )
@@ -291,7 +316,7 @@ if __name__ == "__main__":
             agents=[functional_architect, safety_reviewer, hardware_specialist, cynic, foreman],
             tasks=[pr_analysis_task, safety_review_task, hardware_compat_task, cynic_review_task, final_assessment_task],
             process=Process.sequential,
-            verbose=True
+            verbose=args.verbose
         )
     else:
         # Generic analysis with single agent
@@ -313,7 +338,7 @@ if __name__ == "__main__":
             agents=[functional_architect],
             tasks=[analysis_task],
             process=Process.sequential,
-            verbose=True
+            verbose=args.verbose
         )
 
     result = analysis_crew.kickoff()
@@ -321,5 +346,7 @@ if __name__ == "__main__":
     print(result)
 
     # Save output for GitHub Action
+    import os
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
     with open(args.output, 'w') as f:
         f.write(str(result))
