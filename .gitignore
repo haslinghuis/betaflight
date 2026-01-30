@@ -60,3 +60,6 @@ eeprom.bin
 # changed to submodule
 #/src/config
 
+# Python cache
+__pycache__/
+
