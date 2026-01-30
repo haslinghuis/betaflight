@@ -213,33 +213,108 @@ if __name__ == "__main__":
                        help='Task description for the AI squad to perform. '
                             'Examples: "Analyze PR #1234", "Implement new feature", "Review code for safety"')
     parser.add_argument('--output', type=str,
-                       default='ai_squad_output.txt',
-                       help='Output file path where results will be saved (default: ai_squad_output.txt)')
+                       default='agents/output/ai_squad_output.txt',
+                       help='Output file path where results will be saved (default: agents/output/ai_squad_output.txt)')
 
     args = parser.parse_args()
 
-    # Create dynamic analysis task based on input
-    analysis_task = Task(
-        description=f"""
-        Analyze the following code changes and requirements: {args.task}
+    # Create dynamic analysis tasks based on input
+    if "PR" in args.task or "pull request" in args.task.lower():
+        # PR Analysis Crew - Multi-agent approach
+        pr_analysis_task = Task(
+            description=f"""
+            Analyze the PR changes: {args.task}
+            
+            1. Search the codebase for related motor telemetry implementations
+            2. Read the diff file and understand the refactoring changes
+            3. Identify the key files and functions being modified
+            4. Summarize the architectural changes and benefits
+            """,
+            expected_output='Technical summary of PR changes and architectural impact.',
+            agent=functional_architect
+        )
+        
+        safety_review_task = Task(
+            description="""
+            Review the PR changes for safety and performance:
+            1. Check for blocking operations in flight control loops
+            2. Verify atomic access patterns for shared data
+            3. Ensure no memory safety violations
+            4. Validate scheduler compliance
+            """,
+            expected_output='Safety audit report with any critical issues identified.',
+            agent=safety_reviewer,
+            context=[pr_analysis_task]
+        )
+        
+        hardware_compat_task = Task(
+            description="""
+            Assess hardware compatibility of the PR changes:
+            1. Check target-specific requirements
+            2. Verify DMA and peripheral usage
+            3. Ensure register access is correct
+            4. Validate pinout and sensor interface compatibility
+            """,
+            expected_output='Hardware compatibility assessment and any required adjustments.',
+            agent=hardware_specialist,
+            context=[pr_analysis_task]
+        )
+        
+        cynic_review_task = Task(
+            description="""
+            Perform skeptical analysis of the PR changes:
+            1. Identify potential race conditions or timing issues
+            2. Check for interrupt conflicts or priority inversions
+            3. Look for memory corruption risks
+            4. Find any watchdog timeout scenarios
+            """,
+            expected_output='Critical failure analysis and risk assessment.',
+            agent=cynic,
+            context=[pr_analysis_task, safety_review_task]
+        )
+        
+        final_assessment_task = Task(
+            description=f"""
+            Provide final assessment of PR {args.task}:
+            1. Summarize all findings from the analysis
+            2. Rate the quality and safety of the changes
+            3. Recommend approval, rejection, or modifications
+            4. Suggest any additional testing requirements
+            """,
+            expected_output='Comprehensive PR review with final recommendations.',
+            agent=foreman,
+            context=[pr_analysis_task, safety_review_task, hardware_compat_task, cynic_review_task]
+        )
+        
+        # Create PR analysis crew
+        analysis_crew = Crew(
+            agents=[functional_architect, safety_reviewer, hardware_specialist, cynic, foreman],
+            tasks=[pr_analysis_task, safety_review_task, hardware_compat_task, cynic_review_task, final_assessment_task],
+            process=Process.sequential,
+            verbose=True
+        )
+    else:
+        # Generic analysis with single agent
+        analysis_task = Task(
+            description=f"""
+            Analyze the following request: {args.task}
 
-        1. Search the codebase for relevant existing implementations
-        2. Identify potential safety and performance issues
-        3. Check for compliance with Betaflight coding standards
-        4. Verify hardware compatibility
-        5. Ensure no blocking operations in flight control loops
-        """,
-        expected_output='Comprehensive code review with safety analysis and recommendations.',
-        agent=functional_architect
-    )
-
-    # Create a crew with the analysis task
-    analysis_crew = Crew(
-        agents=[functional_architect],
-        tasks=[analysis_task],
-        process=Process.sequential,
-        verbose=True
-    )
+            1. Search the codebase for relevant existing implementations
+            2. Identify potential safety and performance issues
+            3. Check for compliance with Betaflight coding standards
+            4. Verify hardware compatibility
+            5. Ensure no blocking operations in flight control loops
+            """,
+            expected_output='Comprehensive analysis with safety review and recommendations.',
+            agent=functional_architect
+        )
+        
+        analysis_crew = Crew(
+            agents=[functional_architect],
+            tasks=[analysis_task],
+            process=Process.sequential,
+            verbose=True
+        )
 
     result = analysis_crew.kickoff()
     print("Analysis Result:")

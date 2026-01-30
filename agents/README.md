@@ -31,7 +31,7 @@ docker run --rm --network host \
     - `"Implement GPS Rescue feature for Betaflight"`
     - `"Review code changes in src/main/fc/rc.c for potential race conditions"`
 
-- `--output`: **Optional**. Output file for results (default: `ai_squad_output.txt`)
+- `--output`: **Optional**. Output file for results (default: `agents/output/ai_squad_output.txt`)
   - The analysis results will be saved to this file
   - Can be used for integration with CI/CD pipelines
 
@@ -50,7 +50,7 @@ docker run --rm --network host \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
   ai-agents:latest python /workspace/agents/main.py \
   --task "Analyze PR #14620 motor telemetry refactoring for safety, performance, and Betaflight standards compliance" \
-  --output pr_14620_analysis.txt
+  --output agents/output/pr_14620_analysis.txt
 ```
 
 #### Implement a New Feature
@@ -88,7 +88,8 @@ The AI squad will:
 5. Ensure no blocking operations in flight control loops
 6. Provide comprehensive analysis and recommendations
 
-Results are displayed in the terminal and saved to the specified output file.
+Results are displayed in the terminal and saved to the `agents/output/` directory by default.
+All AI-generated output files are automatically ignored by git.
 
 ## Agents
 

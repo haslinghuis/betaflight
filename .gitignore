@@ -63,3 +63,5 @@ eeprom.bin
 # Python cache
 __pycache__/
 
+# AI squad output files
+agents/output/
