@@ -1,7 +1,7 @@
 from crewai import Agent, Task, Crew, Process, LLM
 from langchain.tools import tool
 from prompts import REVIEWER_PROMPT, CYNIC_PROMPT
-from tools import search_codebase, read_file_content, build_and_debug, run_sitl_test
+from tools import search_codebase, read_file_content, build_and_debug, run_sitl_test, fetch_github_pr
 from audit_tools import check_non_blocking_compliance, check_atomic_access
 from harvester import harvester
 import subprocess
@@ -20,10 +20,10 @@ functional_architect = Agent(
     role='Functional Architect',
     goal='Design new features for Betaflight based on user requirements',
     backstory='Expert in drone flight control systems and Betaflight architecture. Translates high-level ideas into technical specifications. Always searches the codebase for existing implementations.',
-    tools=[search_codebase, read_file_content],
+    tools=[search_codebase, read_file_content, fetch_github_pr],
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Technical Lead
@@ -37,7 +37,7 @@ tech_lead = Agent(
     llm=local_llm,
     max_iter=3, # Allow the agent to try fixing its code 3 times before asking for help
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Hardware Specialist
@@ -47,7 +47,7 @@ hardware_specialist = Agent(
     backstory='Expert in STM32 microcontrollers and Betaflight target definitions. Knows the specifics of each flight controller board and ensures code is compatible with hardware constraints.',
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Testing Agent
@@ -58,7 +58,7 @@ testing_agent = Agent(
     tools=[build_and_debug],
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Safety Reviewer
@@ -68,7 +68,7 @@ safety_reviewer = Agent(
     backstory=REVIEWER_PROMPT,
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Cynic (Skeptic)
@@ -79,7 +79,7 @@ cynic = Agent(
     tools=[check_non_blocking_compliance, check_atomic_access],
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Aero-Physicist
@@ -89,7 +89,7 @@ aero_physicist = Agent(
     backstory='Expert in PID control theory, vibrations, and thrust-to-weight dynamics. Prevents flyaways from poor filtering or control logic.',
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Librarian (Hardware/Docs Expert)
@@ -100,7 +100,7 @@ librarian = Agent(
     tools=[search_codebase, read_file_content],
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Test Pilot (SITL Expert)
@@ -111,7 +111,7 @@ test_pilot = Agent(
     tools=[build_and_debug, run_sitl_test],
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Research Agent (DevOps for AI)
@@ -121,7 +121,7 @@ research_agent = Agent(
     backstory='Audits Docker infrastructure, tests new models, and ensures the development environment stays current.',
     llm=local_llm,
     allow_delegation=False,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # AGENT: The Foreman (Supervisor)
@@ -131,7 +131,7 @@ foreman = Agent(
     backstory='Meticulous project manager who values flight safety above all else. Ensures quality and cross-agent collaboration.',
     allow_delegation=True,
     llm=local_llm,
-    verbose=True
+    verbose=False  # Will be set dynamically
 )
 
 # Example Task: Discovery
@@ -212,8 +212,32 @@ if __name__ == "__main__":
                        help='Output file path where results will be saved (default: agents/output/ai_squad_output.txt)')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Enable verbose output with detailed agent reasoning and intermediate steps')
+    parser.add_argument('--quiet-tools', '-q', action='store_true',
+                       help='Show only tool errors, suppress successful tool output (reduces verbosity)')
+    parser.add_argument('--github-token', type=str,
+                       help='GitHub token for accessing PR files (optional, falls back to local analysis)')
 
     args = parser.parse_args()
+
+    # Set verbosity for all agents dynamically
+    verbose_agents = args.verbose
+    functional_architect.verbose = verbose_agents
+    tech_lead.verbose = verbose_agents
+    hardware_specialist.verbose = verbose_agents
+    testing_agent.verbose = verbose_agents
+    safety_reviewer.verbose = verbose_agents
+    cynic.verbose = verbose_agents
+    aero_physicist.verbose = verbose_agents
+    librarian.verbose = verbose_agents
+    test_pilot.verbose = verbose_agents
+    research_agent.verbose = verbose_agents
+    foreman.verbose = verbose_agents
+
+    # Set quiet tools mode in environment for tools to check
+    if args.quiet_tools:
+        os.environ['QUIET_TOOLS'] = '1'
+    else:
+        os.environ.pop('QUIET_TOOLS', None)
 
     # Create dynamic analysis tasks based on input
     if "PR" in args.task or "pull request" in args.task.lower():
@@ -222,12 +246,13 @@ if __name__ == "__main__":
             description=f"""
             Analyze the PR changes: {args.task}
             
-            1. Search the codebase for related motor telemetry implementations
-            2. Read the diff file and understand the refactoring changes
-            3. Identify the key files and functions being modified
-            4. Summarize the architectural changes and benefits
+            1. First, fetch the PR details and diff using the fetch_github_pr tool
+            2. Search the local codebase for related motor telemetry implementations
+            3. Read the relevant local files to understand the current implementation
+            4. Identify the key files and functions being modified
+            5. Summarize the architectural changes and benefits
             """,
-            expected_output='Technical summary of PR changes and architectural impact.',
+            expected_output='Technical summary of PR changes, fetched PR data, and architectural impact.',
             agent=functional_architect
         )
         
@@ -345,8 +370,28 @@ if __name__ == "__main__":
     print("Analysis Result:")
     print(result)
 
-    # Save output for GitHub Action
+    # Save output for GitHub Action - ensure it's human readable
     import os
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
+
+    # Convert result to string if it's not already, and ensure it's readable
+    if hasattr(result, 'raw'):
+        output_content = str(result.raw)
+    else:
+        output_content = str(result)
+
+    # Clean up any JSON artifacts and ensure readable format
+    if output_content.startswith('{') and output_content.endswith('}'):
+        # If it looks like JSON, try to extract the readable content
+        try:
+            import json
+            data = json.loads(output_content)
+            if 'final_answer' in data:
+                output_content = data['final_answer']
+            elif 'output' in data:
+                output_content = data['output']
+        except:
+            pass  # Keep original if JSON parsing fails
+
     with open(args.output, 'w') as f:
-        f.write(str(result))
+        f.write(output_content)

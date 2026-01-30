@@ -40,6 +40,18 @@ docker run --rm --network host \
   - Useful for debugging and understanding agent decision-making
   - Default: disabled (quiet mode for cleaner output)
 
+- `--quiet-tools`, `-q`: **Optional**. Show only tool errors, suppress successful tool output
+  - Reduces verbosity by hiding successful tool executions
+  - Still shows errors and important warnings
+  - Useful for cleaner output in production environments
+  - Default: disabled (show all tool output)
+
+- `--github-token`: **Optional**. GitHub personal access token for accessing PR files
+  - Required for analyzing GitHub PRs with full diff access
+  - If not provided, falls back to local codebase analysis only
+  - Get token from: https://github.com/settings/tokens
+  - Default: none (local analysis only)
+
 - `--help`, `-h`: **Optional**. Show help message and exit
   - Displays usage information and available options
 
@@ -84,6 +96,21 @@ docker run --rm --network host \
   --output output/verbose_analysis.txt"
 ```
 
+#### Analyze PR with GitHub Access (Quiet Tools)
+```bash
+docker build -t ai-agents:latest ./agents && \
+docker run --rm --network host \
+  -v $(pwd):/workspace/src \
+  -v $(pwd)/betaflight-com:/workspace/docs \
+  -v $(pwd)/agents:/workspace/agents \
+  -e OPENAI_API_BASE=http://localhost:11434/v1 \
+  ai-agents:latest /bin/bash -c "cd /workspace/agents && python main.py \
+  --task 'Analyze PR #14620 motor telemetry refactoring' \
+  --github-token YOUR_GITHUB_TOKEN \
+  --quiet-tools \
+  --output output/pr_analysis.txt"
+```
+
 ### Prerequisites
 
 - **Ollama must be running** with DeepSeek-Coder-V2 Lite model:
@@ -96,6 +123,30 @@ docker run --rm --network host \
   - `/workspace/src`: Betaflight source code
   - `/workspace/docs`: Documentation repository
   - `/workspace/agents`: AI agents code
+
+### Performance Considerations
+
+**⚠️ Computational Requirements**
+
+The AI squad is computationally intensive and requires significant resources:
+
+- **Local Development**: Recommended for full analysis with multiple agents
+- **GitHub Actions**: Not recommended due to high computational cost and time limits
+- **Expected Runtime**: 5-15 minutes per analysis depending on complexity
+- **Memory Usage**: 4-8GB RAM required for Ollama + agents
+- **GPU Acceleration**: Optional but recommended for faster inference
+
+**GitHub Actions Limitation**
+
+Due to the computational intensity, this system is designed for:
+- Local development and code review
+- Pre-commit analysis before pushing changes
+- Not suitable for automated CI/CD pipelines
+
+For automated PR analysis, consider:
+- Running on self-hosted GitHub Actions runners with GPU access
+- Using lighter models for basic checks
+- Implementing selective analysis triggers
 
 ### Output
 
