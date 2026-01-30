@@ -78,26 +78,26 @@ def fetch_github_pr(pr_number: str) -> str:
         # Use git commands to fetch PR information
         # First, fetch the PR branch
         fetch_cmd = f"git fetch origin pull/{pr_num}/head:pr-{pr_num}"
-        fetch_result = subprocess.run(fetch_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
+        fetch_result = subprocess.run(fetch_cmd, shell=True, capture_output=True, text=True, cwd="/workspace/src")
 
         if fetch_result.returncode != 0:
             return f"Failed to fetch PR #{pr_num}: {fetch_result.stderr.strip()}"
 
         # Get the diff between the PR branch and main/master
         diff_cmd = f"git diff --name-status origin/master...pr-{pr_num}"
-        diff_result = subprocess.run(diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
+        diff_result = subprocess.run(diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace/src")
 
         # Get detailed diff
         detailed_diff_cmd = f"git diff origin/master...pr-{pr_num} | head -100"
-        detailed_result = subprocess.run(detailed_diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
+        detailed_result = subprocess.run(detailed_diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace/src")
 
         # Get commit messages
         log_cmd = f"git log --oneline origin/master..pr-{pr_num}"
-        log_result = subprocess.run(log_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
+        log_result = subprocess.run(log_cmd, shell=True, capture_output=True, text=True, cwd="/workspace/src")
 
         # Clean up the temporary branch
         cleanup_cmd = f"git branch -D pr-{pr_num}"
-        subprocess.run(cleanup_cmd, shell=True, capture_output=True, cwd="/workspace")
+        subprocess.run(cleanup_cmd, shell=True, capture_output=True, cwd="/workspace/src")
 
         # Format the output
         output = f"PR #{pr_num} Analysis (via git)\n\n"

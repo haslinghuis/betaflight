@@ -6,6 +6,7 @@ from audit_tools import check_non_blocking_compliance, check_atomic_access
 from harvester import harvester
 import subprocess
 import argparse
+import os
 
 # Configure the Local LLM connection
 local_llm = LLM(
@@ -388,8 +389,21 @@ if __name__ == "__main__":
                 output_content = data['final_answer']
             elif 'output' in data:
                 output_content = data['output']
+            elif 'Action' in data:
+                # This is an agent action, not a final answer
+                output_content = f"Agent Action: {data.get('Action', 'Unknown')}\nDetails: {json.dumps(data, indent=2)}"
         except:
             pass  # Keep original if JSON parsing fails
+
+    # Remove markdown code blocks that might contain JSON
+    import re
+    # Remove ```json ... ``` blocks
+    output_content = re.sub(r'```json\s*\{.*?\}\s*```', '', output_content, flags=re.DOTALL)
+    # Remove any remaining ``` blocks
+    output_content = re.sub(r'```\w*\s*', '', output_content)
+
+    # Clean up extra whitespace
+    output_content = re.sub(r'\n\s*\n\s*\n', '\n\n', output_content)
 
     with open(args.output, 'w') as f:
         f.write(output_content)
