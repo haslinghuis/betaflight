@@ -46,12 +46,6 @@ docker run --rm --network host \
   - Useful for cleaner output in production environments
   - Default: disabled (show all tool output)
 
-- `--github-token`: **Optional**. GitHub personal access token for accessing PR files
-  - Required for analyzing GitHub PRs with full diff access
-  - If not provided, falls back to local codebase analysis only
-  - Get token from: https://github.com/settings/tokens
-  - Default: none (local analysis only)
-
 - `--help`, `-h`: **Optional**. Show help message and exit
   - Displays usage information and available options
 
@@ -106,10 +100,25 @@ docker run --rm --network host \
   -e OPENAI_API_BASE=http://localhost:11434/v1 \
   ai-agents:latest /bin/bash -c "cd /workspace/agents && python main.py \
   --task 'Analyze PR #14620 motor telemetry refactoring' \
-  --github-token YOUR_GITHUB_TOKEN \
   --quiet-tools \
   --output output/pr_analysis.txt"
 ```
+
+### PR Analysis
+
+When analyzing GitHub PRs, the system uses git commands to fetch PR branches and diffs directly from the repository. This works seamlessly in VS Code environments with GitHub access - **no additional tokens or API keys required**.
+
+**How it works:**
+1. Fetches the PR branch using `git fetch origin pull/<number>/head`
+2. Compares changes against the main branch using `git diff`
+3. Analyzes commits, changed files, and detailed modifications
+4. Provides comprehensive PR assessment using the multi-agent system
+
+**Benefits:**
+- No need for GitHub personal access tokens
+- Works with existing VS Code GitHub integration
+- Leverages your current repository access permissions
+- Automatic cleanup of temporary branches
 
 ### Prerequisites
 

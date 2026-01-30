@@ -1,7 +1,6 @@
 import subprocess
 import re
 from crewai.tools import tool
-import requests
 import os
 
 @tool("search_codebase")
@@ -67,8 +66,8 @@ def run_sitl_test() -> str:
     return "SITL Test: Build successful. Virtual flight stable. No task overruns detected."
 
 @tool("fetch_github_pr")
-def fetch_github_pr(pr_number: str, github_token: str = None) -> str:
-    """Fetch GitHub PR diff and changed files for analysis."""
+def fetch_github_pr(pr_number: str) -> str:
+    """Fetch GitHub PR diff and changed files for analysis using git commands."""
     try:
         # Extract PR number if it's in format "PR #1234" or "#1234"
         if "PR" in pr_number.upper():
@@ -76,47 +75,53 @@ def fetch_github_pr(pr_number: str, github_token: str = None) -> str:
         else:
             pr_num = pr_number
 
-        headers = {'Authorization': f'token {github_token}'} if github_token else {}
+        # Use git commands to fetch PR information
+        # First, fetch the PR branch
+        fetch_cmd = f"git fetch origin pull/{pr_num}/head:pr-{pr_num}"
+        fetch_result = subprocess.run(fetch_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
 
-        # Get PR diff
-        diff_url = f"https://api.github.com/repos/betaflight/betaflight/pulls/{pr_num}"
-        response = requests.get(diff_url, headers=headers)
+        if fetch_result.returncode != 0:
+            return f"Failed to fetch PR #{pr_num}: {fetch_result.stderr.strip()}"
 
-        if response.status_code != 200:
-            return f"Failed to fetch PR #{pr_num}: {response.status_code}"
+        # Get the diff between the PR branch and main/master
+        diff_cmd = f"git diff --name-status origin/master...pr-{pr_num}"
+        diff_result = subprocess.run(diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
 
-        pr_data = response.json()
+        # Get detailed diff
+        detailed_diff_cmd = f"git diff origin/master...pr-{pr_num} | head -100"
+        detailed_result = subprocess.run(detailed_diff_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
 
-        # Get the diff
-        diff_response = requests.get(f"{diff_url}.diff", headers=headers)
-        if diff_response.status_code == 200:
-            diff_content = diff_response.text
-        else:
-            diff_content = "Diff not available"
+        # Get commit messages
+        log_cmd = f"git log --oneline origin/master..pr-{pr_num}"
+        log_result = subprocess.run(log_cmd, shell=True, capture_output=True, text=True, cwd="/workspace")
 
-        # Get changed files
-        files_url = f"{diff_url}/files"
-        files_response = requests.get(files_url, headers=headers)
+        # Clean up the temporary branch
+        cleanup_cmd = f"git branch -D pr-{pr_num}"
+        subprocess.run(cleanup_cmd, shell=True, capture_output=True, cwd="/workspace")
 
-        files_info = ""
-        if files_response.status_code == 200:
-            files_data = files_response.json()
-            files_info = f"\nChanged files ({len(files_data)}):\n"
-            for file in files_data[:10]:  # Limit to first 10 files
-                files_info += f"- {file['filename']} ({file['status']})\n"
+        # Format the output
+        output = f"PR #{pr_num} Analysis (via git)\n\n"
 
-        return f"""PR #{pr_num}: {pr_data.get('title', 'Unknown')}
+        if log_result.returncode == 0 and log_result.stdout.strip():
+            commits = log_result.stdout.strip().split('\n')
+            output += f"Commits ({len(commits)}):\n"
+            for commit in commits[:5]:  # Show first 5 commits
+                output += f"- {commit}\n"
+            output += "\n"
 
-Description: {pr_data.get('body', 'No description')[:500]}...
+        if diff_result.returncode == 0 and diff_result.stdout.strip():
+            files = diff_result.stdout.strip().split('\n')
+            output += f"Changed files ({len(files)}):\n"
+            for file in files[:20]:  # Show first 20 files
+                if file.strip():
+                    status, filename = file.split('\t', 1)
+                    output += f"- {filename} ({status})\n"
+            output += "\n"
 
-Status: {pr_data.get('state', 'Unknown')}
-Author: {pr_data.get('user', {}).get('login', 'Unknown')}
+        if detailed_result.returncode == 0 and detailed_result.stdout.strip():
+            output += f"Detailed Changes (first 100 lines):\n{detailed_result.stdout.strip()}\n"
 
-{files_info}
-
-Diff Preview (first 2000 chars):
-{diff_content[:2000]}...
-"""
+        return output
 
     except Exception as e:
-        return f"Error fetching PR: {e}"
+        return f"Error fetching PR via git: {e}"

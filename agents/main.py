@@ -214,8 +214,6 @@ if __name__ == "__main__":
                        help='Enable verbose output with detailed agent reasoning and intermediate steps')
     parser.add_argument('--quiet-tools', '-q', action='store_true',
                        help='Show only tool errors, suppress successful tool output (reduces verbosity)')
-    parser.add_argument('--github-token', type=str,
-                       help='GitHub token for accessing PR files (optional, falls back to local analysis)')
 
     args = parser.parse_args()
 
