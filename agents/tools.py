@@ -4,8 +4,8 @@ from crewai.tools import tool
 
 @tool("search_codebase")
 def search_codebase(query: str) -> str:
-    """Searches the Betaflight /src directory for a specific string or regex.
-    Returns filenames and line numbers."""
+    """Search the Betaflight source code for a specific string or regex pattern.
+    Returns matching filenames and line numbers."""
     # Using grep to find the pattern in the src directory
     cmd = ["grep", "-rn", "--exclude-dir=obj", query, "/workspace/src"]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -17,7 +17,7 @@ def search_codebase(query: str) -> str:
 
 @tool("read_file_content")
 def read_file_content(file_path: str) -> str:
-    """Reads the full content of a specific file. Use this after finding a file via search_codebase."""
+    """Read the full content of a specific file from the codebase."""
     try:
         with open(file_path, 'r') as f:
             return f.read()

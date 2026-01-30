@@ -9,8 +9,8 @@ import argparse
 
 # Configure the Local LLM connection
 local_llm = LLM(
-    model='deepseek-coder-v2:lite',
-    base_url="http://ollama:11434",
+    model='ollama/deepseek-coder-v2:lite',
+    base_url="http://localhost:11434",
     api_key="ollama",  # Dummy key for Ollama
     provider="ollama"
 )
@@ -148,8 +148,7 @@ discovery_task = Task(
 design_task = Task(
     description='Design a new GPS Rescue behavior for Betaflight',
     agent=functional_architect,
-    expected_output='A Markdown specification document outlining the feature requirements and integration points.',
-    human_input=True
+    expected_output='A Markdown specification document outlining the feature requirements and integration points.'
 )
 
 # Example Task: Implement the code
@@ -197,8 +196,7 @@ verification_task = Task(
 crew = Crew(
     agents=[functional_architect, tech_lead, hardware_specialist, testing_agent, safety_reviewer, cynic, aero_physicist, librarian, test_pilot, research_agent],
     tasks=[discovery_task, design_task, hardware_task, code_task, testing_task, review_task, verification_task],
-    process=Process.hierarchical,
-    manager_agent=foreman
+    process=Process.sequential
 )
 
 # Run the crew
@@ -228,10 +226,15 @@ if __name__ == "__main__":
         agent=functional_architect
     )
 
-    # Update crew with dynamic task
-    crew.tasks = [analysis_task, design_task, hardware_task, code_task, testing_task, review_task, verification_task]
+    # Create a simple crew with just this task
+    simple_crew = Crew(
+        agents=[functional_architect],
+        tasks=[analysis_task],
+        process=Process.sequential
+    )
 
-    result = crew.kickoff()
+    result = simple_crew.kickoff()
+    print("Analysis Result:")
     print(result)
 
     # Save output for GitHub Action
