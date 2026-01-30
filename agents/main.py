@@ -226,14 +226,15 @@ if __name__ == "__main__":
         agent=functional_architect
     )
 
-    # Create a simple crew with just this task
-    simple_crew = Crew(
+    # Create a crew with the analysis task
+    analysis_crew = Crew(
         agents=[functional_architect],
         tasks=[analysis_task],
-        process=Process.sequential
+        process=Process.sequential,
+        verbose=True
     )
 
-    result = simple_crew.kickoff()
+    result = analysis_crew.kickoff()
     print("Analysis Result:")
     print(result)
 
