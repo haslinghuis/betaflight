@@ -201,13 +201,20 @@ crew = Crew(
 
 # Run the crew
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Betaflight AI Squad')
+    parser = argparse.ArgumentParser(
+        description='Betaflight AI Squad - Multi-agent system for Betaflight firmware development',
+        epilog='Examples:\n'
+               '  python main.py --task "Analyze PR #14620 motor telemetry refactoring"\n'
+               '  python main.py --task "Implement GPS Rescue feature" --output gps_rescue.txt\n'
+               '  python main.py --help'
+    )
     parser.add_argument('--task', type=str,
                        default='Implement GPS Rescue feature for Betaflight',
-                       help='Task description for the AI squad')
+                       help='Task description for the AI squad to perform. '
+                            'Examples: "Analyze PR #1234", "Implement new feature", "Review code for safety"')
     parser.add_argument('--output', type=str,
                        default='ai_squad_output.txt',
-                       help='Output file for results')
+                       help='Output file path where results will be saved (default: ai_squad_output.txt)')
 
     args = parser.parse_args()
 

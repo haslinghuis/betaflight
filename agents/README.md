@@ -8,6 +8,88 @@ This setup provides a multi-agent AI system for developing Betaflight firmware u
 2. Install NVIDIA Container Toolkit if you want GPU acceleration for Ollama.
 3. Run `docker-compose up` to start the environment. This will automatically build the Betaflight dev container, start Ollama, and pull the DeepSeek-Coder-V2 Lite model.
 
+## Usage
+
+The AI squad can be run directly using the `main.py` script with Docker.
+
+### Basic Command
+```bash
+docker build -t ai-agents:latest ./agents && \
+docker run --rm --network host \
+  -v $(pwd):/workspace/src \
+  -v $(pwd)/betaflight-com:/workspace/docs \
+  -v $(pwd)/agents:/workspace/agents \
+  -e OPENAI_API_BASE=http://localhost:11434/v1 \
+  ai-agents:latest python /workspace/agents/main.py --task "Your task description here"
+```
+
+### Command Line Options
+
+- `--task`: **Required**. Description of the task for the AI squad to perform
+  - Examples:
+    - `"Analyze PR #14620 motor telemetry refactoring for safety, performance, and Betaflight standards compliance"`
+    - `"Implement GPS Rescue feature for Betaflight"`
+    - `"Review code changes in src/main/fc/rc.c for potential race conditions"`
+
+- `--output`: **Optional**. Output file for results (default: `ai_squad_output.txt`)
+  - The analysis results will be saved to this file
+  - Can be used for integration with CI/CD pipelines
+
+- `--help`, `-h`: **Optional**. Show help message and exit
+  - Displays usage information and available options
+
+### Examples
+
+#### Analyze a Pull Request
+```bash
+docker build -t ai-agents:latest ./agents && \
+docker run --rm --network host \
+  -v $(pwd):/workspace/src \
+  -v $(pwd)/betaflight-com:/workspace/docs \
+  -v $(pwd)/agents:/workspace/agents \
+  -e OPENAI_API_BASE=http://localhost:11434/v1 \
+  ai-agents:latest python /workspace/agents/main.py \
+  --task "Analyze PR #14620 motor telemetry refactoring for safety, performance, and Betaflight standards compliance" \
+  --output pr_14620_analysis.txt
+```
+
+#### Implement a New Feature
+```bash
+docker build -t ai-agents:latest ./agents && \
+docker run --rm --network host \
+  -v $(pwd):/workspace/src \
+  -v $(pwd)/betaflight-com:/workspace/docs \
+  -v $(pwd)/agents:/workspace/agents \
+  -e OPENAI_API_BASE=http://localhost:11434/v1 \
+  ai-agents:latest python /workspace/agents/main.py \
+  --task "Implement a new LED control feature for Betaflight with support for WS2812B strips"
+```
+
+### Prerequisites
+
+- **Ollama must be running** with DeepSeek-Coder-V2 Lite model:
+  ```bash
+  ollama serve  # Start Ollama service
+  ollama pull deepseek-coder-v2:lite  # Pull the model
+  ```
+
+- **Docker volumes mounted** for access to:
+  - `/workspace/src`: Betaflight source code
+  - `/workspace/docs`: Documentation repository
+  - `/workspace/agents`: AI agents code
+
+### Output
+
+The AI squad will:
+1. Search the codebase for relevant existing implementations
+2. Identify potential safety and performance issues
+3. Check compliance with Betaflight coding standards
+4. Verify hardware compatibility
+5. Ensure no blocking operations in flight control loops
+6. Provide comprehensive analysis and recommendations
+
+Results are displayed in the terminal and saved to the specified output file.
+
 ## Agents
 
 - **Foreman**: Supervisor coordinating all agents and managing human checkpoints
