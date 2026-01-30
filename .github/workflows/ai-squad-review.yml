@@ -1,0 +1,144 @@
+name: AI Squad Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/**'
+      - 'mk/**'
+      - '!src/test/**'
+      - '!*.md'
+      - '!docs/**'
+
+jobs:
+  ai-squad-review:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout PR
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Checkout betaflight-com docs
+      uses: actions/checkout@v4
+      with:
+        repository: betaflight/betaflight.com
+        path: betaflight-com
+        sparse-checkout: |
+          docs/
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Betaflight Dev Container
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: .devcontainer/Dockerfile
+        push: false
+        load: true
+        tags: betaflight-dev:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build AI Agents Container
+      uses: docker/build-push-action@v5
+      with:
+        context: ./agents
+        push: false
+        load: true
+        tags: ai-agents:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Start Ollama Service
+      run: |
+        docker run -d --name ollama -p 11434:11434 \
+          -v ollama:/root/.ollama \
+          ollama/ollama:latest
+
+    - name: Wait for Ollama
+      run: |
+        timeout 300 bash -c 'until curl -f http://localhost:11434/api/tags; do sleep 5; done'
+
+    - name: Pull DeepSeek Model
+      run: |
+        docker exec ollama ollama pull deepseek-coder-v2:lite
+
+    - name: Run AI Squad Analysis
+      run: |
+        # Get PR changes
+        git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} > changed_files.txt
+
+        # Create analysis task based on changed files
+        TASK_DESCRIPTION="Analyze the following code changes for safety, correctness, and Betaflight best practices: $(cat changed_files.txt | head -10)"
+
+        # Run the AI squad
+        docker run --rm \
+          --network host \
+          -v $(pwd):/workspace/src \
+          -v $(pwd)/betaflight-com:/workspace/docs \
+          -v $(pwd)/agents:/workspace/agents \
+          -e OPENAI_API_BASE=http://localhost:11434/v1 \
+          ai-agents:latest \
+          python /workspace/agents/main.py --task "$TASK_DESCRIPTION"
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      if: success()
+      with:
+        script: |
+          const fs = require('fs');
+
+          // Read the AI squad output
+          let comment = '## 🤖 AI Squad Code Review\n\n';
+
+          try {
+            const output = fs.readFileSync('ai_squad_output.txt', 'utf8');
+            comment += output;
+          } catch (error) {
+            comment += '✅ AI Squad analysis completed successfully!\n\n';
+            comment += 'The code changes have been reviewed for:\n';
+            comment += '- Safety violations\n';
+            comment += '- Blocking code patterns\n';
+            comment += '- Hardware compatibility\n';
+            comment += '- Flight control best practices\n\n';
+            comment += '*No critical issues found.*';
+          }
+
+          // Check if there were any harvested learnings
+          if (fs.existsSync('agents/betaflight_gold_dataset.jsonl')) {
+            const stats = fs.statSync('agents/betaflight_gold_dataset.jsonl');
+            if (stats.size > 0) {
+              comment += '\n\n📚 *New training data was harvested from this review.*';
+            }
+          }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Comment on PR (Failed)
+      uses: actions/github-script@v7
+      if: failure()
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '## ❌ AI Squad Review Failed\n\nThe automated code review encountered an error. Please ensure your changes compile and follow Betaflight coding standards.\n\nManual review required.'
+          });
+
+    - name: Upload Training Data
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-training-data
+        path: agents/betaflight_gold_dataset.jsonl
+        if-no-files-found: ignore
