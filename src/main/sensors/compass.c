@@ -537,7 +537,7 @@ static bool compassIsHealthy(void)
 bool compassEnabledAndCalibrated(void)
 {
     return sensors(SENSOR_MAG)
-        && imuConfig()->trust_mag
+        && imuConfig()->mag_trust
         && compassHasBeenCalibrated
         && compassIsHealthy(); // and appars to have valid data
 }

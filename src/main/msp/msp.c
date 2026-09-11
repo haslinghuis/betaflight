@@ -1566,6 +1566,8 @@ case MSP_NAME:
 #ifdef USE_MAG
     case MSP_COMPASS_CONFIG:
         sbufWriteU16(dst, imuConfig()->mag_declination);
+        // Added in API version 1.49
+        sbufWriteU8(dst, imuConfig()->mag_trust ? 1 : 0);
         break;
 #endif
     // Deprecated in favor of MSP_MOTOR_TELEMETY as of API version 1.42
@@ -3258,6 +3260,10 @@ RAM_CODE static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t
 #ifdef USE_MAG
     case MSP_SET_COMPASS_CONFIG:
         imuConfigMutable()->mag_declination = sbufReadU16(src);
+        if (sbufBytesRemaining(src) >= 1) {
+            // Added in API version 1.49
+            imuConfigMutable()->mag_trust = sbufReadU8(src) != 0;
+        }
         break;
 #endif
 
